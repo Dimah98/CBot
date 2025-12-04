@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
+from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
 
 import requests
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
@@ -163,6 +164,7 @@ def run_bot(
     profile_dir: str,
     store_coordinate: Coordinate,
     inventory: Mapping | None = None,
+    inventory: Mapping,
 ) -> None:
     """Повний сценарій: отримує дані ферми, купує сокири та рубає дерева.
 
@@ -176,6 +178,7 @@ def run_bot(
     inventory_data: Mapping = inventory if inventory is not None else extract_inventory(farm_data)
 
     if not should_purchase_axes(inventory_data):
+    if not should_purchase_axes(inventory):
         return
 
     tree_coordinates = resources.get("trees", ResourceGroup("trees", [])).coordinates
@@ -197,6 +200,8 @@ __all__ = [
     "fetch_farm_data",
     "parse_resource_groups",
     "extract_inventory",
+    "fetch_farm_data",
+    "parse_resource_groups",
     "should_purchase_axes",
     "create_browser_context",
     "go_to_game",
