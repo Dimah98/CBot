@@ -8,6 +8,7 @@ Playwright. Коментарі написані українською для п
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 from typing import Dict, Iterable, List, Mapping, Sequence, Tuple
 
 import requests
@@ -23,6 +24,14 @@ class ResourceGroup:
 
     resource_type: str
     coordinates: List[Coordinate]
+
+
+@dataclass
+class Inventory:
+    """Описує ключові ресурси, що потрібні для сценарію бота."""
+
+    axes: int = 0
+    gold: int = 0
 
 
 def fetch_farm_data(farm_id: str, api_key: str) -> Mapping:
@@ -75,6 +84,28 @@ def parse_resource_groups(farm_data: Mapping) -> Dict[str, ResourceGroup]:
         grouped.setdefault("trees", ResourceGroup(resource_type="trees", coordinates=[])).coordinates.append(coords)
 
     return grouped
+
+
+def extract_inventory(farm_data: Mapping) -> Inventory:
+    """Зчитує кількість сокир та золота з відповіді API ферми.
+
+    Підтримує два варіанти структури: плоский словник ``inventory`` або
+    вкладені поля безпосередньо у верхньому рівні відповіді. У разі
+    відсутності значення повертає нуль за замовчуванням.
+    """
+
+    if not isinstance(farm_data, Mapping):
+        return Inventory()
+
+    raw_inventory: MutableMapping | None = None
+    if isinstance(farm_data.get("inventory"), Mapping):
+        raw_inventory = farm_data.get("inventory")
+    else:
+        raw_inventory = farm_data
+
+    axes = int(raw_inventory.get("axes", 0) or 0)
+    gold = int(raw_inventory.get("gold", 0) or 0)
+    return Inventory(axes=axes, gold=gold)
 
 
 def should_purchase_axes(inventory: Mapping) -> bool:
@@ -132,6 +163,7 @@ def run_bot(
     api_key: str,
     profile_dir: str,
     store_coordinate: Coordinate,
+    inventory: Mapping | None = None,
     inventory: Mapping,
 ) -> None:
     """Повний сценарій: отримує дані ферми, купує сокири та рубає дерева.
@@ -142,6 +174,10 @@ def run_bot(
     farm_data = fetch_farm_data(farm_id=farm_id, api_key=api_key)
     resources = parse_resource_groups(farm_data)
 
+    # Якщо інвентар не передали зовні — беремо його з відповіді API.
+    inventory_data: Mapping = inventory if inventory is not None else extract_inventory(farm_data)
+
+    if not should_purchase_axes(inventory_data):
     if not should_purchase_axes(inventory):
         return
 
@@ -160,6 +196,10 @@ def run_bot(
 __all__ = [
     "Coordinate",
     "ResourceGroup",
+    "Inventory",
+    "fetch_farm_data",
+    "parse_resource_groups",
+    "extract_inventory",
     "fetch_farm_data",
     "parse_resource_groups",
     "should_purchase_axes",
